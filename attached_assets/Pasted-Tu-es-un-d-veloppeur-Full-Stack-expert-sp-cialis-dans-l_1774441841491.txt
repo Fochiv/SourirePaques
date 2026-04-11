@@ -1,0 +1,334 @@
+Tu es un développeur Full-Stack expert spécialisé dans la création d’applications web robustes, sécurisées et professionnelles.
+
+Mon objectif est de développer de A à Z une application web complète nommée **Sourires de Pâques**, destinée à collecter des dons financiers pour soutenir un orphelinat local à l’occasion de la fête de Pâques.
+
+L’application doit être prête à être exécutée localement sous WampServer.
+Et aussi si tu vois un point cles essentiels que j'ai oublies tu peux ajouter . 
+Le site est sombre de base . 
+---
+
+# Contraintes techniques strictes
+
+## Frontend
+
+* HTML5 
+* CSS3 
+* JavaScript 
+Tu peux utiliser des trucs boostrap si tu veux car le site doit etre bien designer
+
+## Backend
+
+* PHP natif uniquement
+* Architecture MVC simplifiée
+* PDO obligatoire pour toutes les connexions base de données
+* Sessions PHP sécurisées
+
+## Base de données
+
+* SQL pur (MySQL compatible WampServer)
+* Fournir le script complet de création de base de données
+
+---
+
+# Nom du projet
+
+**Sourires de Pâques**
+
+---
+
+# Objectif principal
+
+Permettre aux utilisateurs de faire des dons en ligne pour financer des actions caritatives destinées à un orphelinat pendant la période de Pâques.
+
+---
+
+# Fonctionnalités globales (disponibles partout)
+
+## Traduction bilingue
+
+* Français par défaut
+* Anglais disponible
+* Bouton de changement instantané FR / EN
+* Traduction dynamique sans rechargement complet si possible
+
+## Mode clair / sombre
+
+* Bouton Light Mode / Dark Mode
+* Utilisation de variables CSS
+* Sauvegarde du choix dans localStorage
+
+## Responsive Design
+
+* Compatible mobile
+* Compatible tablette
+* Compatible desktop
+
+## Accessibilité
+
+* Boutons lisibles
+* Contrastes corrects
+* Navigation simple
+
+---
+
+# Partie utilisateur (Frontend public)
+
+## Page d'accueil
+
+Créer une page d’accueil moderne avec :
+
+* Logo ou titre principal : Sourires de Pâques
+* Bannière attractive
+* Message de bienvenue
+* Présentation du projet humanitaire
+* Présentation de l’orphelinat bénéficiaire
+* Objectif financier global
+* Barre de progression dynamique alimentée depuis la base de données
+* Nombre total de dons reçus
+* Nombre de contributeurs
+
+## Section spirituelle obligatoire
+
+Afficher des versets bibliques sur le partage et la générosité, par exemple :
+
+* "Il y a plus de bonheur à donner qu'à recevoir." (Actes 20:35)
+* "Que chacun donne comme il l'a résolu en son cœur." (2 Corinthiens 9:7)
+
+Les versets doivent être dynamiques :
+
+* affichage aléatoire possible
+* stockés en base de données
+
+## Formulaire de don
+
+L’utilisateur doit pouvoir :
+
+### Choisir :
+
+* Don anonyme
+* Don identifié
+
+### Si don anonyme :
+
+* champ montant uniquement
+
+### Si don identifié :
+
+* Nom
+* Prénom
+* Pays
+* Ville
+* Téléphone (optionnel)
+* Email (optionnel)
+* Montant
+
+## Choix méthode de paiement
+
+### API de paiement
+
+Prévoir une intégration API avec emplacement clair pour insérer :
+
+* clé API
+* endpoint
+* token
+* callback
+
+Le code doit contenir des commentaires précis :
+
+"INSERER ICI LES PARAMETRES DE MON API DE PAIEMENT"
+
+Mon API se trouve dans documentation_api.txt
+
+## Virement bancaire
+
+Afficher :
+
+Master Card : 5430 0502 3923 6064
+
+## Confirmation avant paiement
+
+Afficher un résumé :
+
+* montant
+* méthode choisie
+* identité ou anonyme
+
+---
+
+# Page de remerciement après don
+
+Créer une page élégante avec :
+
+## Message personnalisé
+
+Merci pour votre générosité.
+Votre contribution apportera de la joie à des enfants à l’occasion de Pâques.
+
+## Ajouter automatiquement un verset biblique de bénédiction :
+
+Exemple :
+
+"Celui qui donne au pauvre prête à Dieu." (Proverbes 19:17)
+
+ou
+
+"Dieu aime celui qui donne avec joie." (2 Corinthiens 9:7)
+
+## Ajouter :
+
+* date du don
+* montant donné
+* référence transaction si disponible
+
+## Bouton :
+
+Retour à l’accueil
+
+---
+
+# Partie administrateur (Dashboard Admin)
+
+## Authentification sécurisée
+
+Créer :
+
+* page login admin
+* mot de passe hashé
+* session protégée
+* déconnexion sécurisée
+
+## Dashboard principal
+
+Afficher :
+
+## KPIs
+
+* montant total collecté
+* montant collecté aujourd’hui
+* montant collecté cette semaine
+* montant collecté ce mois
+* nombre total de donateurs
+* nombre de dons anonymes
+* don moyen
+* plus gros don
+
+## Graphiques simples en JS natif
+
+Afficher :
+
+* évolution des dons par jour
+* évolution par semaine
+
+Sans librairie externe
+
+## Historique des dons
+
+Tableau avec :
+
+* Date
+* Nom ou Anonyme
+* Pays
+* Ville
+* Montant
+* Méthode paiement
+* Référence paiement
+* Statut paiement
+
+## Recherche admin
+
+Permettre recherche par :
+
+* nom
+* date
+* montant
+
+## Export CSV
+
+Bouton export CSV complet
+
+## Gestion des versets bibliques
+
+Admin doit pouvoir :
+
+* ajouter un verset
+* modifier un verset
+* supprimer un verset
+* activer/désactiver un verset
+
+## Gestion du message principal
+
+Admin peut modifier :
+
+* message d’accueil
+* objectif financier
+* présentation orphelinat
+
+## Gestion sécurité
+
+Admin peut :
+
+* changer son mot de passe
+
+---
+
+# Sécurité obligatoire
+
+## SQL
+
+* PDO uniquement
+* requêtes préparées obligatoires
+
+# Base de données à générer
+
+Prévoir au minimum les tables :
+
+## admins
+
+## dons
+
+## versets
+
+## paiements
+
+## parametres_site
+
+---
+
+# Livrables demandés
+
+Je veux :
+
+## Structure complète des dossiers :
+
+* views
+* models
+* controllers
+* assets
+* config
+
+## Tous les fichiers PHP
+
+## Script SQL complet
+
+## CSS moderne
+
+## JavaScript commenté
+
+## Code commenté clairement
+
+---
+
+# Style visuel demandé
+
+* Design propre
+* Ambiance chaleureuse
+* Couleurs douces liées à Pâques
+* Interface professionnelle
+* Animation légère CSS
+
+---
+
+# Important
+
+Chaque partie du code doit être expliquée.
+
