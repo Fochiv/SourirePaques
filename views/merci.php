@@ -56,6 +56,18 @@ $donId = $don['id'] ?? 0;
                                 <?= $don['methode_paiement'] === 'api_mobile_money' ? 'Mobile Money' : 'Carte Bancaire' ?>
                             </div>
                         </div>
+                        <?php if (!empty($don['telephone'])): ?>
+                        <div class="col-6">
+                            <small class="text-muted">Téléphone :</small>
+                            <div class="fw-semibold"><i class="bi bi-phone me-1 text-warning"></i><?= htmlspecialchars($don['telephone']) ?></div>
+                        </div>
+                        <?php endif; ?>
+                        <?php if (!empty($don['operateur'])): ?>
+                        <div class="col-6">
+                            <small class="text-muted">Opérateur :</small>
+                            <div class="fw-semibold"><?= htmlspecialchars($don['operateur']) ?></div>
+                        </div>
+                        <?php endif; ?>
                         <div class="col-6">
                             <small class="text-muted" data-i18n="merci_statut_don">Statut :</small>
                             <div id="statutBadgeContainer">
