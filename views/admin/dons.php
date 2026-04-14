@@ -113,13 +113,14 @@ $adminBase = $adminBase ?? 'adminpanel.php';
                                     <?php endif; ?>
                                 </td>
                                 <td><small class="text-muted font-monospace"><?= htmlspecialchars($d['reference_transaction'] ?: '—') ?></small></td>
-                                <td>
+                                <td style="white-space:nowrap;">
                                     <?php
-                                    $badges = ['succes' => 'success', 'echec' => 'danger', 'en_attente' => 'secondary'];
+                                    $badges = ['succes' => 'success', 'echec' => 'danger', 'en_attente' => 'warning'];
                                     $labels = ['succes' => 'Confirmé', 'echec' => 'Échoué', 'en_attente' => 'En attente'];
+                                    $textColors = ['en_attente' => ' text-dark'];
                                     $s = $d['statut'] ?? 'en_attente';
                                     ?>
-                                    <span class="badge bg-<?= $badges[$s] ?? 'secondary' ?>">
+                                    <span class="badge bg-<?= $badges[$s] ?? 'secondary' ?><?= $textColors[$s] ?? '' ?>">
                                         <?= $labels[$s] ?? $s ?>
                                     </span>
                                 </td>

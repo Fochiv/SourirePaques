@@ -60,6 +60,11 @@ switch ($page) {
         (new DonController())->webhook();
         break;
 
+    case 'check_statut':
+        require_once __DIR__ . '/controllers/DonController.php';
+        (new DonController())->checkStatut();
+        break;
+
     case 'admin_login':
         require_once __DIR__ . '/controllers/AdminController.php';
         (new AdminController())->login();

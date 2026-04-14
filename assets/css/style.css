@@ -979,3 +979,28 @@ input[name="otp"] {
     }
     .sidebar-brand-icon { margin: auto; }
 }
+
+/* ===== BOUTONS DE PARTAGE ===== */
+.btn-share {
+    font-weight: 600;
+    border-radius: 50px;
+    border: none;
+    color: #fff !important;
+    transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+    display: inline-flex;
+    align-items: center;
+}
+.btn-share:hover {
+    transform: translateY(-3px);
+    opacity: 0.92;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+    color: #fff !important;
+}
+.btn-share-whatsapp  { background: #25D366; }
+.btn-share-facebook  { background: #1877F2; }
+.btn-share-telegram  { background: #229ED9; }
+.btn-share-tiktok    { background: linear-gradient(135deg, #010101, #69C9D0); }
+
+.partage-section .cta-box {
+    border: 1px solid rgba(245,158,11,0.2);
+}

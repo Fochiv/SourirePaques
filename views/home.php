@@ -138,15 +138,40 @@ require __DIR__ . '/layout/header.php';
                 </a>
             </div>
             <div class="col-lg-6">
-                <div class="images-grid">
-                    <img src="https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=600&q=80"
-                         alt="Enfant orphelin" class="img-grid-main rounded-3">
-                    <div class="img-grid-side">
-                        <img src="https://images.unsplash.com/photo-1519340241574-2cec6aef0c01?w=400&q=80"
-                             alt="Enfant dans le besoin" class="rounded-3 mb-2">
-                        <img src="https://images.unsplash.com/photo-1547234935-80c7145ec969?w=400&q=80"
-                             alt="Orphelins" class="rounded-3">
+                <!-- Carousel photos orphelinat -->
+                <div id="carouselOrphelinat" class="carousel slide rounded-4 overflow-hidden shadow-lg" data-bs-ride="carousel" data-bs-interval="3500">
+                    <div class="carousel-indicators">
+                        <?php for ($i = 0; $i < 10; $i++): ?>
+                        <button type="button" data-bs-target="#carouselOrphelinat" data-bs-slide-to="<?= $i ?>" <?= $i === 0 ? 'class="active" aria-current="true"' : '' ?> aria-label="Slide <?= $i+1 ?>"></button>
+                        <?php endfor; ?>
                     </div>
+                    <div class="carousel-inner" style="max-height:400px;">
+                        <?php
+                        $orphImages = [
+                            ['src' => 'assets/img/orphelins1.jpg', 'alt' => 'Appel urgent — Les orphelins ont besoin d\'aide'],
+                            ['src' => 'assets/img/orphelins2.jpg', 'alt' => 'Enfants dans le besoin'],
+                            ['src' => 'assets/img/orphelins3.jpg', 'alt' => 'Enfants en prière'],
+                            ['src' => 'assets/img/orphelins4.jpg', 'alt' => 'Enfant orphelin'],
+                            ['src' => 'assets/img/orphelins5.jpg', 'alt' => 'Groupe d\'orphelins'],
+                            ['src' => 'assets/img/orphelins6.jpg', 'alt' => 'Aide aux orphelins'],
+                            ['src' => 'assets/img/orphelins7.jpg', 'alt' => 'Enfant en larmes'],
+                            ['src' => 'assets/img/orphelins8.jpg', 'alt' => 'Enfants à table'],
+                            ['src' => 'assets/img/orphelins9.jpg', 'alt' => 'Enfant souriant'],
+                            ['src' => 'assets/img/orphelins10.jpg', 'alt' => 'Distribution d\'aide'],
+                        ];
+                        foreach ($orphImages as $idx => $img): ?>
+                        <div class="carousel-item <?= $idx === 0 ? 'active' : '' ?>">
+                            <img src="<?= $img['src'] ?>" class="d-block w-100" alt="<?= htmlspecialchars($img['alt']) ?>"
+                                 style="object-fit:cover;height:400px;">
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <button class="carousel-control-prev" type="button" data-bs-target="#carouselOrphelinat" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon"></span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#carouselOrphelinat" data-bs-slide="next">
+                        <span class="carousel-control-next-icon"></span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -205,6 +230,52 @@ require __DIR__ . '/layout/header.php';
                 <i class="bi bi-heart-fill me-2"></i>
                 <span data-i18n="btn_donner_maintenant">Donner maintenant</span>
             </a>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SECTION PARTAGE ===== -->
+<section class="partage-section py-5">
+    <div class="container">
+        <div class="cta-box p-4 p-md-5 rounded-4 text-center">
+            <div class="section-badge mb-3 mx-auto">
+                <i class="bi bi-share-fill me-2"></i>
+                <span>Partager</span>
+            </div>
+            <h2 class="section-title mb-2">Partage pour aider même sans donner</h2>
+            <p class="text-body-readable mb-4">
+                Un simple partage peut toucher des centaines de personnes et changer la vie d'un enfant. Partagez maintenant !
+            </p>
+            <?php
+            $shareUrl   = urlencode('https://sourirepaques.iceiy.com/');
+            $shareText  = urlencode('Rejoignez-moi pour soutenir les orphelins de Pâques ! Chaque don, même petit, fait une vraie différence. 🙏');
+            $whatsapp   = 'https://wa.me/?text=' . urlencode('Rejoignez-moi pour soutenir les orphelins de Pâques ! Chaque don, même petit, fait une vraie différence. 🙏 https://sourirepaques.iceiy.com/');
+            $facebook   = 'https://www.facebook.com/sharer/sharer.php?u=' . $shareUrl;
+            $telegram   = 'https://t.me/share/url?url=' . $shareUrl . '&text=' . $shareText;
+            $tiktok     = 'https://www.tiktok.com/share?url=' . $shareUrl;
+            ?>
+            <div class="d-flex justify-content-center flex-wrap gap-3">
+                <a href="<?= $whatsapp ?>" target="_blank" rel="noopener noreferrer"
+                   class="btn btn-share btn-share-whatsapp px-4 py-2">
+                    <i class="bi bi-whatsapp me-2"></i>WhatsApp
+                </a>
+                <a href="<?= $facebook ?>" target="_blank" rel="noopener noreferrer"
+                   class="btn btn-share btn-share-facebook px-4 py-2">
+                    <i class="bi bi-facebook me-2"></i>Facebook
+                </a>
+                <a href="<?= $telegram ?>" target="_blank" rel="noopener noreferrer"
+                   class="btn btn-share btn-share-telegram px-4 py-2">
+                    <i class="bi bi-telegram me-2"></i>Telegram
+                </a>
+                <a href="<?= $tiktok ?>" target="_blank" rel="noopener noreferrer"
+                   class="btn btn-share btn-share-tiktok px-4 py-2">
+                    <i class="bi bi-tiktok me-2"></i>TikTok
+                </a>
+            </div>
+            <p class="text-muted small mt-3 mb-0">
+                <i class="bi bi-link-45deg me-1"></i>
+                Lien : <a href="https://sourirepaques.iceiy.com/" target="_blank" class="text-warning text-decoration-none">sourirepaques.iceiy.com</a>
+            </p>
         </div>
     </div>
 </section>

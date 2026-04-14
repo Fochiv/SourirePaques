@@ -1,6 +1,8 @@
 <?php
 $titre = 'Merci pour votre don — Sourires de Pâques';
 require __DIR__ . '/layout/header.php';
+$estEnAttente = ($don && $don['statut'] === 'en_attente' && $don['methode_paiement'] === 'api_mobile_money');
+$donId = $don['id'] ?? 0;
 ?>
 
 <section class="merci-section py-5">
@@ -9,12 +11,24 @@ require __DIR__ . '/layout/header.php';
             <div class="col-lg-7 text-center">
 
                 <div class="merci-icon animate-pulse mb-4">
-                    <div class="merci-circle">
-                        <i class="bi bi-heart-fill"></i>
+                    <div class="merci-circle" id="merciCircle">
+                        <i class="bi bi-heart-fill" id="merciIcon"></i>
                     </div>
                 </div>
 
-                <h1 class="merci-titre mb-3" data-i18n="merci_titre">Merci pour votre générosité !</h1>
+                <h1 class="merci-titre mb-3" data-i18n="merci_titre" id="merciTitre">Merci pour votre générosité !</h1>
+
+                <!-- Message de confirmation succès (caché par défaut, affiché par JS) -->
+                <div id="alertSucces" class="alert alert-success d-none mb-3 fw-semibold fs-5" role="alert">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    Votre transaction a été validée avec succès !
+                </div>
+
+                <!-- Message echec (caché par défaut) -->
+                <div id="alertEchec" class="alert alert-danger d-none mb-3" role="alert">
+                    <i class="bi bi-x-circle-fill me-2"></i>
+                    La transaction a échoué ou a été annulée. Veuillez réessayer.
+                </div>
 
                 <p class="lead text-body-readable mb-4" data-i18n="merci_message">
                     Votre contribution apportera de la joie à des enfants à l'occasion de Pâques.
@@ -44,13 +58,13 @@ require __DIR__ . '/layout/header.php';
                         </div>
                         <div class="col-6">
                             <small class="text-muted" data-i18n="merci_statut_don">Statut :</small>
-                            <div>
+                            <div id="statutBadgeContainer">
                                 <?php if ($don['statut'] === 'succes'): ?>
-                                    <span class="badge bg-success"><i class="bi bi-check me-1"></i>Confirmé</span>
+                                    <span class="badge bg-success" id="statutBadge"><i class="bi bi-check me-1"></i>Confirmé</span>
                                 <?php elseif ($don['statut'] === 'echec'): ?>
-                                    <span class="badge bg-danger"><i class="bi bi-x me-1"></i>Échoué</span>
+                                    <span class="badge bg-danger" id="statutBadge"><i class="bi bi-x me-1"></i>Échoué</span>
                                 <?php else: ?>
-                                    <span class="badge bg-warning text-dark">
+                                    <span class="badge bg-warning text-dark" id="statutBadge">
                                         <i class="bi bi-hourglass me-1"></i>
                                         <span data-i18n="statut_attente">En attente de confirmation</span>
                                     </span>
@@ -60,17 +74,32 @@ require __DIR__ . '/layout/header.php';
                         <?php if ($don['reference_transaction']): ?>
                         <div class="col-12 mt-2">
                             <small class="text-muted" data-i18n="merci_ref">Référence transaction :</small>
-                            <div class="fw-semibold text-info small"><?= htmlspecialchars($don['reference_transaction']) ?></div>
+                            <div class="fw-semibold text-info small" id="refTransaction"><?= htmlspecialchars($don['reference_transaction']) ?></div>
                         </div>
                         <?php endif; ?>
                     </div>
 
-                    <?php if ($don['statut'] === 'en_attente' && $don['methode_paiement'] === 'api_mobile_money'): ?>
-                    <div class="alert alert-info mt-3 mb-0 small">
-                        <i class="bi bi-phone me-2"></i>
-                        <span data-i18n="merci_attente_ussd">
-                            Une demande de confirmation a été envoyée sur votre téléphone. Validez avec votre code PIN pour finaliser le paiement.
-                        </span>
+                    <?php if ($estEnAttente): ?>
+                    <!-- Compteur + message d'attente (affiché uniquement si en attente) -->
+                    <div id="zoneAttente" class="alert alert-info mt-3 mb-0">
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <div class="flex-grow-1">
+                                <div class="fw-semibold mb-1">
+                                    <i class="bi bi-phone me-2"></i>
+                                    <span data-i18n="merci_attente_ussd">
+                                        Une demande de confirmation a été envoyée sur votre téléphone. Validez avec votre code PIN pour finaliser le paiement.
+                                    </span>
+                                </div>
+                                <div class="small text-muted">Vérification automatique du statut en cours...</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="fw-bold fs-4 text-warning" id="compteurAffichage">05:00</div>
+                                <div class="small text-muted">Temps restant</div>
+                            </div>
+                        </div>
+                        <div class="progress mt-2" style="height:6px; border-radius:3px;">
+                            <div class="progress-bar bg-warning progress-bar-animated" id="compteurBar" style="width:100%;"></div>
+                        </div>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -133,5 +162,114 @@ require __DIR__ . '/layout/header.php';
         </div>
     </div>
 </section>
+
+<?php if ($estEnAttente && $donId > 0): ?>
+<script>
+(function() {
+    var donId        = <?= (int)$donId ?>;
+    var totalSecs    = 300; // 5 minutes
+    var remaining    = totalSecs;
+    var pollingDone  = false;
+    var intervalId   = null;
+    var counterId    = null;
+
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+    function updateCompteur() {
+        if (remaining <= 0) {
+            stopAll();
+            return;
+        }
+        var mins = Math.floor(remaining / 60);
+        var secs = remaining % 60;
+        var el = document.getElementById('compteurAffichage');
+        var bar = document.getElementById('compteurBar');
+        if (el) el.textContent = pad(mins) + ':' + pad(secs);
+        if (bar) bar.style.width = ((remaining / totalSecs) * 100) + '%';
+        remaining--;
+    }
+
+    function stopAll() {
+        if (intervalId) clearInterval(intervalId);
+        if (counterId)  clearInterval(counterId);
+        pollingDone = true;
+    }
+
+    function onSuccess() {
+        stopAll();
+        // Cacher la zone d'attente
+        var za = document.getElementById('zoneAttente');
+        if (za) za.classList.add('d-none');
+
+        // Afficher le message vert
+        var alertS = document.getElementById('alertSucces');
+        if (alertS) alertS.classList.remove('d-none');
+
+        // Mettre à jour le badge statut
+        var badge = document.getElementById('statutBadge');
+        if (badge) {
+            badge.className = 'badge bg-success';
+            badge.innerHTML = '<i class="bi bi-check me-1"></i>Confirmé';
+        }
+
+        // Mettre à jour l'icône du cercle
+        var circle = document.getElementById('merciCircle');
+        if (circle) circle.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
+
+        // Scroll vers le haut
+        window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+
+    function onEchec() {
+        stopAll();
+        var za = document.getElementById('zoneAttente');
+        if (za) za.classList.add('d-none');
+
+        var alertE = document.getElementById('alertEchec');
+        if (alertE) alertE.classList.remove('d-none');
+
+        var badge = document.getElementById('statutBadge');
+        if (badge) {
+            badge.className = 'badge bg-danger';
+            badge.innerHTML = '<i class="bi bi-x me-1"></i>Échoué';
+        }
+        window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+
+    function checkStatut() {
+        if (pollingDone) return;
+        fetch('index.php?page=check_statut&don_id=' + donId)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.statut === 'succes') {
+                    onSuccess();
+                } else if (data.statut === 'echec') {
+                    onEchec();
+                }
+                // si toujours en_attente, on continue
+            })
+            .catch(function() {
+                // erreur réseau — on continue
+            });
+    }
+
+    // Lancer le polling toutes les 3 secondes
+    intervalId = setInterval(checkStatut, 3000);
+
+    // Lancer le compteur chaque seconde
+    updateCompteur();
+    counterId = setInterval(function() {
+        if (remaining <= 0) {
+            stopAll();
+        } else {
+            updateCompteur();
+        }
+    }, 1000);
+
+    // Vérification immédiate au chargement
+    checkStatut();
+})();
+</script>
+<?php endif; ?>
 
 <?php require __DIR__ . '/layout/footer.php'; ?>

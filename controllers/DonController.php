@@ -152,6 +152,28 @@ class DonController {
     }
 
     /**
+     * Endpoint AJAX : retourne le statut actuel d'un don (JSON)
+     */
+    public function checkStatut(): void {
+        header('Content-Type: application/json');
+        $donId = (int)($_GET['don_id'] ?? 0);
+        if ($donId <= 0) {
+            echo json_encode(['statut' => 'inconnu']);
+            exit;
+        }
+        $don = $this->donModel->trouverParId($donId);
+        if (!$don) {
+            echo json_encode(['statut' => 'inconnu']);
+            exit;
+        }
+        echo json_encode([
+            'statut'    => $don['statut'],
+            'reference' => $don['reference_transaction'] ?? '',
+        ]);
+        exit;
+    }
+
+    /**
      * Page d'attente Wave
      */
     public function wave(): void {
