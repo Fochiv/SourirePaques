@@ -312,61 +312,67 @@ class DonController {
 
     /**
      * Interroge l'API Ashtech Pay pour récupérer le statut d'une transaction.
+     * Endpoint officiel : GET /v1/transaction/:id
      * Retourne 'succes', 'echec' ou 'en_attente'.
      */
     private function verifierStatutApi(string $transactionId, string $reference): string {
         $apiKey  = 'ak_83adbb920ef3efd424561f70d6b76e7bf0ed91cce302973a';
         $baseUrl = 'https://ashtechpay.top';
 
-        // Plusieurs endpoints possibles pour la vérification du statut
-        $endpoints = [
-            $baseUrl . '/v1/transactions/' . urlencode($transactionId),
-            $baseUrl . '/v1/collect/' . urlencode($transactionId),
-            $baseUrl . '/v1/transaction?reference=' . urlencode($reference),
-            $baseUrl . '/v1/payments/' . urlencode($transactionId),
-        ];
+        // Endpoint officiel d'après la documentation Ashtech Pay
+        $url = $baseUrl . '/v1/transaction/' . urlencode($transactionId);
 
-        foreach ($endpoints as $url) {
-            $ch = curl_init($url);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HTTPHEADER     => [
-                    'Authorization: Bearer ' . $apiKey,
-                    'Accept: application/json',
-                ],
-                CURLOPT_TIMEOUT        => 8,
-                CURLOPT_SSL_VERIFYPEER => true,
-            ]);
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => [
+                'Authorization: Bearer ' . $apiKey,
+                'Accept: application/json',
+            ],
+            CURLOPT_TIMEOUT        => 8,
+            CURLOPT_SSL_VERIFYPEER => true,
+        ]);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error    = curl_error($ch);
+        curl_close($ch);
 
-            if ($httpCode === 200 && $response) {
-                $data = json_decode($response, true);
-                if (!is_array($data)) continue;
+        // Log pour debug
+        @file_put_contents(
+            __DIR__ . '/../webhook.log',
+            '[' . date('Y-m-d H:i:s') . '] CHECK_STATUS tx=' . $transactionId
+            . ' http=' . $httpCode . ' err=' . $error
+            . ' body=' . substr((string)$response, 0, 500) . PHP_EOL,
+            FILE_APPEND
+        );
 
-                $status = strtolower(
-                    $data['status']
-                    ?? $data['state']
-                    ?? $data['payment_status']
-                    ?? $data['data']['status']
-                    ?? $data['transaction']['status']
-                    ?? ''
-                );
+        if ($httpCode !== 200 || !$response) {
+            return 'en_attente';
+        }
 
-                if (in_array($status, [
-                    'success', 'successful', 'completed', 'paid', 'reussi', 'réussi'
-                ], true)) {
-                    return 'succes';
-                }
-                if (in_array($status, [
-                    'failed', 'failure', 'cancelled', 'canceled', 'rejected', 'echec', 'échec', 'expired'
-                ], true)) {
-                    return 'echec';
-                }
-                // statut connu mais pas final → on est en attente
-                return 'en_attente';
-            }
+        $data = json_decode($response, true);
+        if (!is_array($data)) {
+            return 'en_attente';
+        }
+
+        $status = strtolower(
+            $data['status']
+            ?? $data['state']
+            ?? $data['payment_status']
+            ?? $data['data']['status']
+            ?? $data['transaction']['status']
+            ?? ''
+        );
+
+        if (in_array($status, [
+            'success', 'successful', 'completed', 'paid', 'reussi', 'réussi'
+        ], true)) {
+            return 'succes';
+        }
+        if (in_array($status, [
+            'failed', 'failure', 'cancelled', 'canceled', 'rejected', 'echec', 'échec', 'expired'
+        ], true)) {
+            return 'echec';
         }
 
         return 'en_attente';
