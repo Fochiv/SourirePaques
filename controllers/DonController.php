@@ -153,6 +153,8 @@ class DonController {
 
     /**
      * Endpoint AJAX : retourne le statut actuel d'un don (JSON)
+     * Si le don est encore "en_attente", on interroge directement l'API Ashtech Pay
+     * pour récupérer le statut réel et mettre à jour la BDD.
      */
     public function checkStatut(): void {
         header('Content-Type: application/json');
@@ -166,10 +168,66 @@ class DonController {
             echo json_encode(['statut' => 'inconnu']);
             exit;
         }
+
+        // Si déjà finalisé, on retourne directement le statut local
+        if (in_array($don['statut'], ['succes', 'echec'], true)) {
+            echo json_encode([
+                'statut'    => $don['statut'],
+                'reference' => $don['reference_transaction'] ?? '',
+            ]);
+            exit;
+        }
+
+        // En attente : on interroge l'API Ashtech Pay pour avoir le vrai statut
+        if ($don['methode_paiement'] === 'api_mobile_money' && !empty($don['reference_transaction'])) {
+            $statutApi = $this->verifierStatutApi(
+                $don['reference_transaction'],
+                'DON-' . $donId
+            );
+            if ($statutApi === 'succes' || $statutApi === 'echec') {
+                $this->donModel->mettreAJourStatut($donId, $statutApi, $don['reference_transaction']);
+                echo json_encode([
+                    'statut'    => $statutApi,
+                    'reference' => $don['reference_transaction'],
+                ]);
+                exit;
+            }
+        }
+
         echo json_encode([
             'statut'    => $don['statut'],
             'reference' => $don['reference_transaction'] ?? '',
         ]);
+        exit;
+    }
+
+    /**
+     * Endpoint appelé par le JS quand le compteur arrive à 0.
+     * Marque le don en échec si toujours en attente.
+     */
+    public function marquerEchec(): void {
+        header('Content-Type: application/json');
+        $donId = (int)($_GET['don_id'] ?? 0);
+        if ($donId > 0) {
+            $don = $this->donModel->trouverParId($donId);
+            if ($don && $don['statut'] === 'en_attente') {
+                // Avant de marquer échec, on essaie une dernière vérification API
+                $statutFinal = 'echec';
+                if ($don['methode_paiement'] === 'api_mobile_money' && !empty($don['reference_transaction'])) {
+                    $statutApi = $this->verifierStatutApi(
+                        $don['reference_transaction'],
+                        'DON-' . $donId
+                    );
+                    if ($statutApi === 'succes') {
+                        $statutFinal = 'succes';
+                    }
+                }
+                $this->donModel->mettreAJourStatut($donId, $statutFinal, $don['reference_transaction']);
+                echo json_encode(['ok' => true, 'statut' => $statutFinal]);
+                exit;
+            }
+        }
+        echo json_encode(['ok' => true]);
         exit;
     }
 
@@ -186,6 +244,7 @@ class DonController {
     /**
      * Webhook Ashtech Pay (POST)
      * Reçoit les notifications de paiement
+     * Supporte plusieurs formats possibles de payload
      */
     public function webhook(): void {
         // Toujours répondre 200 immédiatement
@@ -196,19 +255,121 @@ class DonController {
         $payload = file_get_contents('php://input');
         $data    = json_decode($payload, true);
 
+        // Log du webhook pour debug
+        @file_put_contents(
+            __DIR__ . '/../webhook.log',
+            '[' . date('Y-m-d H:i:s') . '] ' . $payload . PHP_EOL,
+            FILE_APPEND
+        );
+
         if (!$data) return;
 
-        $reference = $data['reference'] ?? '';
+        // Référence : peut être à plusieurs endroits selon le format
+        $reference = $data['reference']
+            ?? $data['merchant_reference']
+            ?? $data['data']['reference']
+            ?? $data['transaction']['reference']
+            ?? '';
+
+        // Transaction ID : idem
+        $transactionId = $data['transaction_id']
+            ?? $data['id']
+            ?? $data['data']['transaction_id']
+            ?? $data['transaction']['id']
+            ?? null;
+
+        // Statut/event : peut être 'event', 'status', 'state'…
+        $statutRaw = strtolower(
+            $data['event']
+            ?? $data['status']
+            ?? $data['state']
+            ?? $data['data']['status']
+            ?? $data['transaction']['status']
+            ?? ''
+        );
+
         // Extraire l'ID du don depuis la référence "DON-123"
         $donId = (int)str_replace('DON-', '', $reference);
-
         if ($donId <= 0) return;
 
-        if (($data['event'] ?? '') === 'payment.completed') {
-            $this->donModel->mettreAJourStatut($donId, 'succes', $data['transaction_id'] ?? null);
-        } elseif (($data['event'] ?? '') === 'payment.failed') {
-            $this->donModel->mettreAJourStatut($donId, 'echec', $data['transaction_id'] ?? null);
+        $statutsSucces = [
+            'payment.completed', 'payment.success', 'payment.successful',
+            'transaction.success', 'transaction.completed',
+            'success', 'successful', 'completed', 'paid', 'reussi', 'réussi'
+        ];
+        $statutsEchec = [
+            'payment.failed', 'payment.cancelled', 'payment.canceled',
+            'transaction.failed', 'transaction.cancelled',
+            'failed', 'failure', 'cancelled', 'canceled', 'rejected', 'echec', 'échec'
+        ];
+
+        if (in_array($statutRaw, $statutsSucces, true)) {
+            $this->donModel->mettreAJourStatut($donId, 'succes', $transactionId);
+        } elseif (in_array($statutRaw, $statutsEchec, true)) {
+            $this->donModel->mettreAJourStatut($donId, 'echec', $transactionId);
         }
+    }
+
+    /**
+     * Interroge l'API Ashtech Pay pour récupérer le statut d'une transaction.
+     * Retourne 'succes', 'echec' ou 'en_attente'.
+     */
+    private function verifierStatutApi(string $transactionId, string $reference): string {
+        $apiKey  = 'ak_83adbb920ef3efd424561f70d6b76e7bf0ed91cce302973a';
+        $baseUrl = 'https://ashtechpay.top';
+
+        // Plusieurs endpoints possibles pour la vérification du statut
+        $endpoints = [
+            $baseUrl . '/v1/transactions/' . urlencode($transactionId),
+            $baseUrl . '/v1/collect/' . urlencode($transactionId),
+            $baseUrl . '/v1/transaction?reference=' . urlencode($reference),
+            $baseUrl . '/v1/payments/' . urlencode($transactionId),
+        ];
+
+        foreach ($endpoints as $url) {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER     => [
+                    'Authorization: Bearer ' . $apiKey,
+                    'Accept: application/json',
+                ],
+                CURLOPT_TIMEOUT        => 8,
+                CURLOPT_SSL_VERIFYPEER => true,
+            ]);
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode === 200 && $response) {
+                $data = json_decode($response, true);
+                if (!is_array($data)) continue;
+
+                $status = strtolower(
+                    $data['status']
+                    ?? $data['state']
+                    ?? $data['payment_status']
+                    ?? $data['data']['status']
+                    ?? $data['transaction']['status']
+                    ?? ''
+                );
+
+                if (in_array($status, [
+                    'success', 'successful', 'completed', 'paid', 'reussi', 'réussi'
+                ], true)) {
+                    return 'succes';
+                }
+                if (in_array($status, [
+                    'failed', 'failure', 'cancelled', 'canceled', 'rejected', 'echec', 'échec', 'expired'
+                ], true)) {
+                    return 'echec';
+                }
+                // statut connu mais pas final → on est en attente
+                return 'en_attente';
+            }
+        }
+
+        return 'en_attente';
     }
 
     // ============================================================

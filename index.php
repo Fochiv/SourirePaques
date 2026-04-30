@@ -65,6 +65,11 @@ switch ($page) {
         (new DonController())->checkStatut();
         break;
 
+    case 'marquer_echec':
+        require_once __DIR__ . '/controllers/DonController.php';
+        (new DonController())->marquerEchec();
+        break;
+
     case 'admin_login':
         require_once __DIR__ . '/controllers/AdminController.php';
         (new AdminController())->login();

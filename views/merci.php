@@ -105,7 +105,7 @@ $donId = $don['id'] ?? 0;
                                 <div class="small text-muted">Vérification automatique du statut en cours...</div>
                             </div>
                             <div class="text-center">
-                                <div class="fw-bold fs-4 text-warning" id="compteurAffichage">05:00</div>
+                                <div class="fw-bold fs-4 text-warning" id="compteurAffichage">08:00</div>
                                 <div class="small text-muted">Temps restant</div>
                             </div>
                         </div>
@@ -114,6 +114,13 @@ $donId = $don['id'] ?? 0;
                         </div>
                     </div>
                     <?php endif; ?>
+
+                    <!-- Bouton réessayer (caché par défaut, affiché en cas d'échec) -->
+                    <div id="zoneRetry" class="d-none mt-3 text-center">
+                        <a href="index.php?page=don" class="btn btn-donate px-4 py-2">
+                            <i class="bi bi-arrow-clockwise me-2"></i>Réessayer le paiement
+                        </a>
+                    </div>
                 </div>
                 <?php endif; ?>
 
@@ -179,7 +186,7 @@ $donId = $don['id'] ?? 0;
 <script>
 (function() {
     var donId        = <?= (int)$donId ?>;
-    var totalSecs    = 300; // 5 minutes
+    var totalSecs    = 480; // 8 minutes
     var remaining    = totalSecs;
     var pollingDone  = false;
     var intervalId   = null;
@@ -187,48 +194,44 @@ $donId = $don['id'] ?? 0;
 
     function pad(n) { return n < 10 ? '0' + n : '' + n; }
 
-    function updateCompteur() {
-        if (remaining <= 0) {
-            stopAll();
-            return;
-        }
+    function renderCompteur() {
         var mins = Math.floor(remaining / 60);
         var secs = remaining % 60;
         var el = document.getElementById('compteurAffichage');
         var bar = document.getElementById('compteurBar');
         if (el) el.textContent = pad(mins) + ':' + pad(secs);
         if (bar) bar.style.width = ((remaining / totalSecs) * 100) + '%';
-        remaining--;
     }
 
     function stopAll() {
-        if (intervalId) clearInterval(intervalId);
-        if (counterId)  clearInterval(counterId);
+        if (intervalId) { clearInterval(intervalId); intervalId = null; }
+        if (counterId)  { clearInterval(counterId);  counterId  = null; }
         pollingDone = true;
     }
 
     function onSuccess() {
         stopAll();
-        // Cacher la zone d'attente
         var za = document.getElementById('zoneAttente');
         if (za) za.classList.add('d-none');
 
-        // Afficher le message vert
+        var zr = document.getElementById('zoneRetry');
+        if (zr) zr.classList.add('d-none');
+
         var alertS = document.getElementById('alertSucces');
         if (alertS) alertS.classList.remove('d-none');
 
-        // Mettre à jour le badge statut
+        var alertE = document.getElementById('alertEchec');
+        if (alertE) alertE.classList.add('d-none');
+
         var badge = document.getElementById('statutBadge');
         if (badge) {
             badge.className = 'badge bg-success';
             badge.innerHTML = '<i class="bi bi-check me-1"></i>Confirmé';
         }
 
-        // Mettre à jour l'icône du cercle
         var circle = document.getElementById('merciCircle');
         if (circle) circle.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
 
-        // Scroll vers le haut
         window.scrollTo({top: 0, behavior: 'smooth'});
     }
 
@@ -245,7 +248,28 @@ $donId = $don['id'] ?? 0;
             badge.className = 'badge bg-danger';
             badge.innerHTML = '<i class="bi bi-x me-1"></i>Échoué';
         }
+
+        var zr = document.getElementById('zoneRetry');
+        if (zr) zr.classList.remove('d-none');
+
         window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+
+    function onTimeout() {
+        // Compteur arrivé à 0 : on demande au serveur de marquer en échec
+        // (avec une dernière vérification API)
+        fetch('index.php?page=marquer_echec&don_id=' + donId)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data && data.statut === 'succes') {
+                    onSuccess();
+                } else {
+                    onEchec();
+                }
+            })
+            .catch(function() {
+                onEchec();
+            });
     }
 
     function checkStatut() {
@@ -253,32 +277,34 @@ $donId = $don['id'] ?? 0;
         fetch('index.php?page=check_statut&don_id=' + donId)
             .then(function(r) { return r.json(); })
             .then(function(data) {
+                if (!data) return;
                 if (data.statut === 'succes') {
                     onSuccess();
                 } else if (data.statut === 'echec') {
                     onEchec();
                 }
-                // si toujours en_attente, on continue
             })
-            .catch(function() {
-                // erreur réseau — on continue
-            });
+            .catch(function() { /* on continue */ });
     }
 
-    // Lancer le polling toutes les 3 secondes
+    // Polling toutes les 3 secondes
     intervalId = setInterval(checkStatut, 3000);
 
-    // Lancer le compteur chaque seconde
-    updateCompteur();
+    // Compteur chaque seconde
+    renderCompteur();
     counterId = setInterval(function() {
+        remaining--;
         if (remaining <= 0) {
+            remaining = 0;
+            renderCompteur();
             stopAll();
+            onTimeout();
         } else {
-            updateCompteur();
+            renderCompteur();
         }
     }, 1000);
 
-    // Vérification immédiate au chargement
+    // Première vérification immédiate
     checkStatut();
 })();
 </script>
